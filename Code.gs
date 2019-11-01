@@ -1,3 +1,5 @@
+// Copyright (C) 2019, by David W. Jeske
+// released to the public domain
 
 // https://github.com/PlanetEfficacy/gmailFilter
 
