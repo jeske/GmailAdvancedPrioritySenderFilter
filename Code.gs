@@ -11,10 +11,6 @@
 function prioritizeInbox() {
     
   console.log("code start...");
-  
-  // var firstThread = GmailApp.getInboxThreads(0,1)[0];
-  var firstThread = GmailApp.search("in:inbox and (label:starred)", 0, 1)[0];
-  firstThread.markUnread();  
    
   // Wrap the entire function in a try / catch, in case there is an error, log it.
   try {
