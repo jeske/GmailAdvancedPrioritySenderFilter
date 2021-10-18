@@ -8,6 +8,11 @@
 function prioritizeInbox() {
     
   console.log("code start...");
+
+  // create the necessary labels...
+  if (!GmailApp.getUserLabelByName("InboxBulk")) { GmailApp.createLabel("InboxBulk"); }
+  if (!GmailApp.getUserLabelByName("InboxBulkMaybe")) { GmailApp.createLabel("InboxBulkMaybe"); }
+  if (!GmailApp.getUserLabelByName("InboxArchive")) { GmailApp.createLabel("InboxArchive"); }  
     
   // Wrap the entire function in a try / catch, in case there is an error, log it.
   try {
@@ -207,5 +212,6 @@ function extractEmail(addr) {
   }
   
   return addr;
- 
+  
+  
 }
