@@ -1,6 +1,3 @@
-// Copyright (C) 2019, by David W. Jeske
-// released to the public domain
-
 // https://github.com/PlanetEfficacy/gmailFilter
 
 // https://developers.google.com/apps-script/reference/gmail/gmail-label
@@ -11,13 +8,13 @@
 function prioritizeInbox() {
     
   console.log("code start...");
-   
+    
   // Wrap the entire function in a try / catch, in case there is an error, log it.
   try {
    
     // Get the most recent threads in your inbox
     var NUM_THREADS = 50;
-    var threads = GmailApp.search("in:inbox and (!label:starred)", 0, NUM_THREADS);
+    var threads = GmailApp.search("in:inbox and (!is:starred) and !in:z", 0, NUM_THREADS);
     
     console.log("fetched threads ... " + threads.length);
     // For each thread
@@ -25,7 +22,7 @@ function prioritizeInbox() {
       var thread = threads[t];
       console.log({msg:"thread", n:t, thread:thread});
       
-      // Get the sender of the thread
+      // Get the unique senders of the thread
       var senders_map = {};
       var messages = thread.getMessages(); 
       for (var msg_n in messages) {          
@@ -41,21 +38,117 @@ function prioritizeInbox() {
       for (var n in senders) {
         var sender = senders[n];
         console.log("checking sender : " + sender);
+
+        if (isSpammySender(sender)) {
+          console.log("***** moving spammy thread from .. " + sender + "     *****");
+          GmailApp.getUserLabelByName("InboxBulk").addToThread(thread);
+          thread.moveToArchive();
+          break;
+        }
+
         if (isImportantSender(sender)) {
           console.log("*****   Starring message from .. " + sender + "     ******");
           
           GmailApp.starMessage(messages[0]);       // star the first message in thread   
           break;
         }
+
+        if (isMaybeBulkSender(sender)) {
+          console.log("**** maybe bulk message from domain .. " + sender + "     ******");
+          GmailApp.getUserLabelByName("InboxBulkMaybe").addToThread(thread);
+          thread.moveToArchive();
+          break;
+        }
       }       
 
-      
+      // if we didn't move it out of inbox, mark the thread as processed...
+      if (thread.isInInbox) {
+        GmailApp.getUserLabelByName("z").addToThread(thread);
+      }
     }
   } catch (e) {
     console.log("Error..." + e.toString());
   }
 }
 
+function isSpammySender(sender) {
+  // no spammy sending from self
+  if (true) {
+    var user_email = Session.getActiveUser().getEmail();
+    if (sender == user_email) {
+      return false;
+    }     
+    // check gmail aliases
+    var aliases = GmailApp.getAliases();
+    // console.log("aliases... " + aliases);
+    for (var n in aliases) {
+      // console.log("checking alias: " + aliases[n]);                     
+      if (sender == aliases[n]) {
+        return false;
+      }          
+    }
+  }
+
+  if (true) {
+    // check if I'm whitelisted with InboxArchive
+    var search_spec = "in:InboxArchive from:" + sender;    
+    var whitelist_threads = GmailApp.search(search_spec,0,5);
+
+    if (whitelist_threads.length == 0) {  // nope? then check if I have any messgaes in spam
+      // check if I have ever marked spam a message from this sender
+      var search_spec = "in:spam from:" + sender;    
+      var spam_threads = GmailApp.search(search_spec,0,5);
+
+      console.log("spam search_spec = " + search_spec + "    returned: " + spam_threads.length);
+      if (spam_threads.length > 0) {
+        return true;
+      } 
+    }
+  }
+  return false;
+}
+
+function isMaybeBulkSender(sender) {
+  // no maybe bulk sending from self
+  if (true) {
+    var user_email = Session.getActiveUser().getEmail();
+    if (sender == user_email) {
+      return false;
+    }     
+    // check gmail aliases
+    var aliases = GmailApp.getAliases();
+    // console.log("aliases... " + aliases);
+    for (var n in aliases) {
+      // console.log("checking alias: " + aliases[n]);                     
+      if (sender == aliases[n]) {
+        return false;
+      }          
+    }
+  }
+
+  // check if I'm whitelisted with InboxArchive
+  var search_spec = "in:InboxArchive from:" + sender;    
+  var whitelist_threads = GmailApp.search(search_spec,0,5);
+
+  if (whitelist_threads.length == 0) {  // nope? then check if I have any messgaes in spam
+
+    var sender_domain = sender.split("@")[1];
+    console.log("checking sender DOMAIN : " + sender_domain);
+
+      if (true) {
+      // check if I have ever archived a message from this sender
+      var search_spec = "!in:inbox !label:starred !in:Spam !in:InboxBulk !in:InboxBulkMaybe from:" + sender_domain;    
+      var saved_threads = GmailApp.search(search_spec,0,5);
+
+      console.log("maybe bulk sender search_spec = " + search_spec + "    returned: " + saved_threads.length);
+      if (saved_threads.length == 0) {
+        return true; // if we have no saved threads from this sender, maybe it's spam
+      } 
+    }
+  }
+
+  return false;
+}
 
 function isImportantSender(sender) {
       
@@ -114,6 +207,5 @@ function extractEmail(addr) {
   }
   
   return addr;
-  
-  
+ 
 }
